@@ -65,6 +65,9 @@ contract MittariaGenesis is
   constructor() ERC721("Mittaria Genesis", "MTG") {
     // 7.5%
     setPrimaryRoyalty(0x6b1CCC680974522Ed053AD7AA5B2F99473F44bAB, 750);
+
+    // init public phase
+    phases.push();
   }
 
   modifier onlyAllowedExecutor() {
@@ -120,19 +123,35 @@ contract MittariaGenesis is
     require(phase.configs.price * _amount == msg.value, "Invalid price");
     _verifyProof(_phaseId, account, _maxAmount, _proof);
 
-    _mintToken(account, _amount);
-
     phase.totalMinted += _amount;
     phase.minted[account] += _amount;
+
+    _mintToken(account, _amount);
+  }
+
+  function mintTo(address _to, uint16 _amount) external payable {
+    Phase storage phase = phases[0];
+    require(_amount > 0, "Invalid amount");
+    require(phase.configs.quantity >= phase.totalMinted + _amount, "Exceed quantity");
+    require(phase.configs.startTime <= block.timestamp, "Not started");
+    require(phase.configs.endTime >= block.timestamp, "Ended");
+    require(phase.configs.maxPerTxn >= _amount, "Exceed max per txn");
+    require(phase.configs.price * _amount == msg.value, "Invalid price");
+
+    phase.totalMinted += _amount;
+    phase.minted[_to] += _amount;
+
+    _mintToken(_to, _amount);
   }
 
   // verifed
   function _mintToken(address _account, uint16 _amount) internal {
     require(currentIdx + _amount - 1 <= maxSupply, "Exceed max supply");
-    for (uint256 i = 0; i < _amount; i++) {
-      _mint(_account, currentIdx + i);
-    }
+    uint256 _currentIdx = currentIdx;
     currentIdx += _amount;
+    for (uint256 i = 0; i < _amount; i++) {
+      _mint(_account, _currentIdx + i);
+    }
   }
 
   // verifed
@@ -238,7 +257,7 @@ contract MittariaGenesis is
   }
 
   // verifed
-  function mintTo(address _to, uint256 _amount) external onlyOwner {
+  function adminMintTo(address _to, uint256 _amount) external onlyOwner {
     require(_amount > 0, "Invalid amount");
     _mintToken(_to, uint16(_amount));
   }
