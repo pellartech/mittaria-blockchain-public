@@ -11,6 +11,9 @@ chai.use(solidity)
 chai.use(chaiAsPromised)
 const { expect } = chai
 
+const publicPhase = 0
+const firstPrivatePhase = 1
+
 describe('Mittaria Genesis ERC721', () => {
   let accounts: SignerWithAddress[]
   let mainContract: MittariaGenesis
@@ -196,7 +199,7 @@ describe('Mittaria Genesis ERC721', () => {
     it('createMintingPhase should be correct', async () => {
       await mainContract.connect(owner).createMintingPhase(phaseConfigs)
 
-      const phaseInfo = await mainContract.getPhaseInfo(0)
+      const phaseInfo = await mainContract.getPhaseInfo(firstPrivatePhase)
 
       const configs = phaseInfo.configs
       expect(configs.quantity).equal(phaseConfigs.quantity)
@@ -212,10 +215,10 @@ describe('Mittaria Genesis ERC721', () => {
 
   context('Test case for function updateMintingPhase', () => {
     it('updateMintingPhase should be revert without owner', async () => {
-      await expect(mainContract.connect(bob).updateMintingPhase(0, phaseConfigs)).revertedWith('Ownable: caller is not the owner')
+      await expect(mainContract.connect(bob).updateMintingPhase(firstPrivatePhase, phaseConfigs)).revertedWith('Ownable: caller is not the owner')
     })
     it('updateMintingPhase should be correct', async () => {
-      await expect(mainContract.connect(owner).updateMintingPhase(0, phaseConfigs)).revertedWith('Invalid phase id')
+      await expect(mainContract.connect(owner).updateMintingPhase(firstPrivatePhase, phaseConfigs)).revertedWith('Invalid phase id')
       await mainContract.connect(owner).createMintingPhase(phaseConfigs)
       const newPhaseConfigs = {
         ...phaseConfigs,
@@ -225,9 +228,9 @@ describe('Mittaria Genesis ERC721', () => {
         endTime: moment.utc().add(2, 'days').unix(),
         price: ethers.utils.parseEther('0.2'),
       }
-      await mainContract.connect(owner).updateMintingPhase(0, newPhaseConfigs)
+      await mainContract.connect(owner).updateMintingPhase(firstPrivatePhase, newPhaseConfigs)
 
-      const phaseInfo = await mainContract.getPhaseInfo(0)
+      const phaseInfo = await mainContract.getPhaseInfo(firstPrivatePhase)
 
       const configs = phaseInfo.configs
       expect(configs.quantity).equal(newPhaseConfigs.quantity)
@@ -258,7 +261,7 @@ describe('Mittaria Genesis ERC721', () => {
 
       const message = ethers.utils.solidityKeccak256(['uint256', 'bytes32'], [1337, ethers.utils.solidityKeccak256(['uint256', 'uint16', 'address', 'uint16'], [0, 0, alice.address, 1])])
       const signature = await owner.signMessage(ethers.utils.arrayify(message))
-      await expect(mainContract.connect(alice).mint(0, 101, 1, signature)).revertedWith('Exceed quantity')
+      await expect(mainContract.connect(alice).mint(firstPrivatePhase, 101, 1, signature)).revertedWith('Exceed quantity')
     })
 
     it('mint should be revert without sale not active', async () => {
@@ -270,7 +273,7 @@ describe('Mittaria Genesis ERC721', () => {
 
       const message = ethers.utils.solidityKeccak256(['uint256', 'bytes32'], [1337, ethers.utils.solidityKeccak256(['uint256', 'uint16', 'address', 'uint16'], [0, 0, alice.address, 1])])
       const signature = await owner.signMessage(ethers.utils.arrayify(message))
-      await expect(mainContract.connect(alice).mint(0, 1, 1, signature)).revertedWith('Not started')
+      await expect(mainContract.connect(alice).mint(firstPrivatePhase, 1, 1, signature)).revertedWith('Not started')
     })
 
     it('mint should be revert with exceed txn', async () => {
@@ -281,7 +284,7 @@ describe('Mittaria Genesis ERC721', () => {
 
       // mine and set time
       await network.provider.send('evm_increaseTime', [10000000])
-      await expect(mainContract.connect(alice).mint(0, 1, 1, signature)).revertedWith('Ended')
+      await expect(mainContract.connect(alice).mint(firstPrivatePhase, 1, 1, signature)).revertedWith('Ended')
     })
 
     it('mint should be revert with exceed max per txn', async () => {
@@ -290,7 +293,7 @@ describe('Mittaria Genesis ERC721', () => {
       const message = ethers.utils.solidityKeccak256(['uint256', 'bytes32'], [1337, ethers.utils.solidityKeccak256(['uint256', 'uint16', 'address', 'uint16'], [0, 0, alice.address, 1])])
       const signature = await owner.signMessage(ethers.utils.arrayify(message))
 
-      await expect(mainContract.connect(alice).mint(0, 2, 1, signature)).revertedWith('Exceed max per txn')
+      await expect(mainContract.connect(alice).mint(firstPrivatePhase, 2, 1, signature)).revertedWith('Exceed max per txn')
     })
 
     it('mint should be revert with exceed max per wallet', async () => {
@@ -309,7 +312,7 @@ describe('Mittaria Genesis ERC721', () => {
                   'address',
                   'uint16',
                 ],
-                [0, 0, alice.address, 1]
+                [firstPrivatePhase, 0, alice.address, 1]
               )
             )
           ),
@@ -317,11 +320,11 @@ describe('Mittaria Genesis ERC721', () => {
       )
       const signature = await owner.signMessage(ethers.utils.arrayify(message))
 
-      await mainContract.connect(alice).mint(0, 1, 1, signature, {
+      await mainContract.connect(alice).mint(firstPrivatePhase, 1, 1, signature, {
         value: ethers.utils.parseEther('0.1'),
       })
       await expect(
-        mainContract.connect(alice).mint(0, 1, 1, signature, {
+        mainContract.connect(alice).mint(firstPrivatePhase, 1, 1, signature, {
           value: ethers.utils.parseEther('0.1'),
         })
       ).revertedWith('Exceed max per wallet')
@@ -333,7 +336,7 @@ describe('Mittaria Genesis ERC721', () => {
       const message = ethers.utils.solidityKeccak256(['uint256', 'bytes32'], [1337, ethers.utils.solidityKeccak256(['uint256', 'uint16', 'address', 'uint16'], [0, 0, alice.address, 1])])
       const signature = await owner.signMessage(ethers.utils.arrayify(message))
 
-      await expect(mainContract.connect(alice).mint(0, 1, 1, signature)).revertedWith('Invalid price')
+      await expect(mainContract.connect(alice).mint(firstPrivatePhase, 1, 1, signature)).revertedWith('Invalid price')
     })
 
     it('mint should be revert without eligible', async () => {
@@ -343,7 +346,7 @@ describe('Mittaria Genesis ERC721', () => {
       const signature = await owner.signMessage(ethers.utils.arrayify(message))
 
       await expect(
-        mainContract.connect(bob).mint(0, 1, 1, signature, {
+        mainContract.connect(bob).mint(firstPrivatePhase, 1, 1, signature, {
           value: ethers.utils.parseEther('0.1'),
         })
       ).revertedWith('Invalid proof')
@@ -370,7 +373,7 @@ describe('Mittaria Genesis ERC721', () => {
                   'address',
                   'uint16',
                 ],
-                [0, 0, alice.address, 1000]
+                [firstPrivatePhase, 0, alice.address, 1000]
               )
             )
           ),
@@ -378,19 +381,19 @@ describe('Mittaria Genesis ERC721', () => {
       )
       const signature = await owner.signMessage(ethers.utils.arrayify(message))
 
-      await mainContract.connect(alice).mint(0, 10, 1000, signature, {
+      await mainContract.connect(alice).mint(firstPrivatePhase, 10, 1000, signature, {
         value: ethers.utils.parseEther('1'),
       })
 
       await expect(
-        mainContract.connect(alice).mint(0, 2, 1000, signature, {
+        mainContract.connect(alice).mint(firstPrivatePhase, 2, 1000, signature, {
           value: ethers.utils.parseEther('0.2'),
         })
       ).revertedWith('Exceed max supply')
 
       await mainContract.connect(owner).setTotalSupply(12)
 
-      await mainContract.connect(alice).mint(0, 2, 1000, signature, {
+      await mainContract.connect(alice).mint(firstPrivatePhase, 2, 1000, signature, {
         value: ethers.utils.parseEther('0.2'),
       })
     })
@@ -414,7 +417,7 @@ describe('Mittaria Genesis ERC721', () => {
                   'address',
                   'uint16',
                 ],
-                [0, 0, alice.address, 1000]
+                [firstPrivatePhase, 0, alice.address, 1000]
               )
             )
           ),
@@ -423,26 +426,51 @@ describe('Mittaria Genesis ERC721', () => {
       const signature = await owner.signMessage(ethers.utils.arrayify(message))
 
       const tx = await (
-        await mainContract.connect(alice).mint(0, 10, 1000, signature, {
+        await mainContract.connect(alice).mint(firstPrivatePhase, 10, 1000, signature, {
           value: ethers.utils.parseEther('1'),
         })
       ).wait()
       console.log('txn', Number(tx.gasUsed))
 
       expect(await mainContract.balanceOf(alice.address)).equal(10)
-      const phaseInfo = await mainContract.getPhaseInfo(0)
+      const phaseInfo = await mainContract.getPhaseInfo(firstPrivatePhase)
       expect(phaseInfo.totalMinted).equal(10)
-      const minted = await mainContract.getTokenMintedByAccount(0, alice.address)
+      const minted = await mainContract.getTokenMintedByAccount(1, alice.address)
       expect(minted).equal(10)
     })
   })
 
   context('Test case for function mintTo', () => {
-    it('mintTo should be revert without owner', async () => {
-      await expect(mainContract.connect(bob).mintTo(alice.address, 1)).revertedWith('Ownable: caller is not the owner')
+    it('mintTo should be success', async () => {
+      await mainContract.connect(owner).updateMintingPhase(publicPhase, {
+        quantity: 100,
+        maxPerTxn: 100,
+        startTime: 1,
+        endTime: moment.utc().add(1, 'days').unix(),
+        price: ethers.utils.parseEther('2'),
+      })
+
+      const tx = await (
+        await mainContract.connect(alice).mintTo(bob.address, 11, {
+          value: ethers.utils.parseEther('2').mul(11),
+        })
+      ).wait()
+      console.log('txn', Number(tx.gasUsed))
+
+      expect(await mainContract.balanceOf(bob.address)).equal(11)
+      const phaseInfo = await mainContract.getPhaseInfo(publicPhase)
+      expect(phaseInfo.totalMinted).equal(11)
+      const minted = await mainContract.getTokenMintedByAccount(publicPhase, bob.address)
+      expect(minted).equal(11)
     })
-    it('mintTo should be correct', async () => {
-      const txn = await (await mainContract.connect(owner).mintTo(alice.address, 1)).wait()
+  })
+
+  context('Test case for function adminMintTo', () => {
+    it('adminMintTo should be revert without owner', async () => {
+      await expect(mainContract.connect(bob).adminMintTo(alice.address, 1)).revertedWith('Ownable: caller is not the owner')
+    })
+    it('adminMintTo should be correct', async () => {
+      const txn = await (await mainContract.connect(owner).adminMintTo(alice.address, 1)).wait()
       console.log(Number(txn.gasUsed))
       expect(await mainContract.balanceOf(alice.address)).equal(1)
     })
