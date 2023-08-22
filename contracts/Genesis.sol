@@ -109,7 +109,7 @@ contract MittariaGenesis is
 
   /* User */
   // verifed
-  function mint(uint256 _phaseId, uint16 _amount, uint16 _maxAmount, bytes calldata _proof) external payable {
+  function mint(uint256 _phaseId, uint16 _amount, uint16 _maxAmount, bytes calldata _signature) external payable {
     address account = msg.sender;
     require(tx.origin == account, "Not allowed");
 
@@ -121,7 +121,7 @@ contract MittariaGenesis is
     require(phase.configs.maxPerTxn >= _amount, "Exceed max per txn");
     require(_maxAmount >= phase.minted[account] + _amount, "Exceed max per wallet");
     require(phase.configs.price * _amount == msg.value, "Invalid price");
-    _verifyProof(_phaseId, account, _maxAmount, _proof);
+    _verifySignature(_phaseId, account, _maxAmount, _signature);
 
     phase.totalMinted += _amount;
     phase.minted[account] += _amount;
@@ -155,14 +155,15 @@ contract MittariaGenesis is
   }
 
   // verifed
-  function _verifyProof(uint256 _phaseId, address _account, uint16 _maxAmount, bytes calldata _proof) internal view {
+  function _verifySignature(uint256 _phaseId, address _account, uint16 _maxAmount, bytes calldata _signature) internal view {
     bytes32 messageHash = keccak256(abi.encodePacked(block.chainid, keccak256(abi.encode(_phaseId, phases[_phaseId].version, _account, _maxAmount))));
-    address signer = messageHash.toEthSignedMessageHash().recover(_proof);
+    address signer = messageHash.toEthSignedMessageHash().recover(_signature);
     require(verifier == signer, "Invalid proof");
   }
 
   /* Admin */
   function setTotalSupply(uint16 _maxSupply) external onlyOwner {
+    require(_maxSupply <= 5555, "Invalid max supply");
     maxSupply = _maxSupply;
   }
 
@@ -205,6 +206,7 @@ contract MittariaGenesis is
 
   // verifed
   function setVerifier(address _verifier) external onlyOwner {
+    require(_verifier != address(0), "Invalid verifier");
     verifier = _verifier;
   }
 
@@ -265,11 +267,6 @@ contract MittariaGenesis is
   function withdraw() public onlyOwner {
     uint256 balance = address(this).balance;
     payable(0xe3Bd610f0A53F028F95fB64aFF55Cd65aFdCd1Ef).transfer(balance);
-  }
-
-  function backupWithdraw() public onlyOwner {
-    uint256 balance = address(this).balance;
-    payable(msg.sender).transfer(balance);
   }
 
   /* Royalty */
